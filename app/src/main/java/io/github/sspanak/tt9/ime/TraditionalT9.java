@@ -33,6 +33,7 @@ public class TraditionalT9 extends PremiumHandler {
 	@NonNull private final Handler heartbeatDetector = new Handler(Looper.getMainLooper());
 	private boolean isDead = false;
 	private int zombieChecks = 0;
+	private long t9GlideRequestId = 0;
 
 	// A String to be committed after successfully starting in an input field.
 	@NonNull private final StringBuffer onAfterStartText = new StringBuffer();
@@ -129,6 +130,7 @@ public class TraditionalT9 extends PremiumHandler {
 	@Override
 	protected boolean onStart(EditorInfo field, boolean restarting) {
 		Logger.setLevel(settings.getLogLevel());
+		t9GlideRequestId++;
 
 		if (SystemSettings.isTT9Selected(this)) {
 			startHeartbeatCheck();
@@ -191,6 +193,7 @@ public class TraditionalT9 extends PremiumHandler {
 
 	@Override
 	protected void onStop() {
+		t9GlideRequestId++;
 		stopVoiceInput();
 		onFinishTyping(true);
 		statusBar.setText(mInputMode);
@@ -336,12 +339,14 @@ public class TraditionalT9 extends PremiumHandler {
 		}
 
 		final int languageId = mLanguage.getId();
+		final long requestId = ++t9GlideRequestId;
 		Logger.d("T9Glide", "Looking up exact glide sequence: " + sequence);
 
 		DataStore.getWords(
 			candidates -> backgroundTasks.post(() -> {
 				if (
-					candidates.isEmpty()
+					requestId != t9GlideRequestId
+					|| candidates.isEmpty()
 					|| mLanguage == null
 					|| mLanguage.getId() != languageId
 					|| !InputModeKind.isPredictive(mInputMode)
