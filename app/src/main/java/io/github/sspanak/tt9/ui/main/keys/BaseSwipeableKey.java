@@ -173,6 +173,7 @@ abstract public class BaseSwipeableKey extends BaseSoftKeyWithSideText {
 		isHolding = false;
 		isSwipingX = false;
 		isSwipingY = false;
+		notSwiped = true;
 
 		if (HOLD_DURATION_THRESHOLD < Float.MAX_VALUE) {
 			cancelLongClick();
@@ -225,6 +226,21 @@ abstract public class BaseSwipeableKey extends BaseSoftKeyWithSideText {
 
 	private void cancelLongClick() {
 		longClickWaitHandler.removeCallbacksAndMessages(null);
+	}
+
+
+	/**
+	 * Abort the normal press/hold/per-key-swipe interaction when a gesture has been promoted to
+	 * T9 glide typing. The next ACTION_DOWN will initialize a fresh interaction as usual.
+	 */
+	protected void cancelTouchForT9Glide() {
+		cancelLongClick();
+		preventRepeat();
+		Timer.stop(TIMER_ID);
+		isHolding = false;
+		isSwipingX = false;
+		isSwipingY = false;
+		notSwiped = false;
 	}
 
 
