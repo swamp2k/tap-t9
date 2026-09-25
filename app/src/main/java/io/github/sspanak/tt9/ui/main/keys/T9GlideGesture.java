@@ -15,7 +15,7 @@ import io.github.sspanak.tt9.util.Logger;
  *
  * This deliberately does not try to decode gesture geometry yet. The MVP records the ordered
  * sequence of number-key zones entered by the pointer and hands that sequence to TraditionalT9
- * for dictionary lookup. Normal taps remain handled by the existing key classes.
+ * for dictionary lookup. Normal taps remain fully handled by the existing key classes.
  */
 final class T9GlideGesture {
 	private static final String LOG_TAG = T9GlideGesture.class.getSimpleName();
