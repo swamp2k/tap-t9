@@ -235,7 +235,9 @@ abstract public class BaseSwipeableKey extends BaseSoftKeyWithSideText {
 	 */
 	protected void cancelTouchForT9Glide() {
 		cancelLongClick();
+		cancelLongPress();
 		preventRepeat();
+		setPressed(false);
 		Timer.stop(TIMER_ID);
 		isHolding = false;
 		isSwipingX = false;
