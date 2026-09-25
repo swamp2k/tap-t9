@@ -317,6 +317,53 @@ public class TraditionalT9 extends PremiumHandler {
 	}
 
 
+
+	/**
+	 * Resolve a completed glide across the existing T9 number keys.
+	 *
+	 * The first MVP intentionally uses exact T9 sequences only. This keeps false positives low while
+	 * the touch path and cancellation behavior are validated on real devices. Geometry-aware ranking
+	 * and repeated-key inference can be layered on top without changing normal tap typing.
+	 */
+	public void onT9Glide(@NonNull String sequence) {
+		if (
+			sequence.length() < 2
+			|| !InputModeKind.isPredictive(mInputMode)
+			|| mLanguage == null
+			|| DictionaryLoader.autoLoad(this, settings, mLanguage)
+		) {
+			return;
+		}
+
+		final int languageId = mLanguage.getId();
+		Logger.d("T9Glide", "Looking up exact glide sequence: " + sequence);
+
+		DataStore.getWords(
+			candidates -> backgroundTasks.post(() -> {
+				if (
+					candidates.isEmpty()
+					|| mLanguage == null
+					|| mLanguage.getId() != languageId
+					|| !InputModeKind.isPredictive(mInputMode)
+				) {
+					Logger.d("T9Glide", "No usable candidate for sequence: " + sequence);
+					return;
+				}
+
+				final String topCandidate = candidates.get(0);
+				Logger.d("T9Glide", "Resolved " + sequence + " -> " + topCandidate + " from " + candidates.size() + " candidate(s)");
+				onText(topCandidate, false);
+			}),
+			mLanguage,
+			sequence,
+			true,
+			"",
+			false,
+			0,
+			8
+		);
+	}
+
 	@Override
 	protected boolean onNumber(int key, boolean hold, int repeat) {
 		if (InputModeKind.isPredictive(mInputMode) && DictionaryLoader.autoLoad(this, settings, mLanguage)) {
