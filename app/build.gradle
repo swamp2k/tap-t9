@@ -176,6 +176,8 @@ android {
 
 	buildTypes {
 		debug {
+			applicationIdSuffix = ".glide"
+			versionNameSuffix = "-glide"
 			buildConfigField 'String', 'VERSION_FULL', "\"${getVersionString('debug')}\""
 		}
 		release {
