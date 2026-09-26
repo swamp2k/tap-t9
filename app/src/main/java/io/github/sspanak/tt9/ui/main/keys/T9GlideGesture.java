@@ -2,9 +2,11 @@ package io.github.sspanak.tt9.ui.main.keys;
 
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
+import io.github.sspanak.tt9.BuildConfig;
 import io.github.sspanak.tt9.R;
 import io.github.sspanak.tt9.ime.TraditionalT9;
 import io.github.sspanak.tt9.ime.modes.InputModeKind;
@@ -75,6 +77,9 @@ final class T9GlideGesture {
 				if (wasGliding) {
 					sourceKey.cancelTouchForT9Glide();
 					Logger.d(LOG_TAG, "Completed T9 glide sequence: " + completedSequence);
+					if (BuildConfig.DEBUG) {
+						Toast.makeText(sourceKey.getContext(), "Glide sequence: " + completedSequence, Toast.LENGTH_SHORT).show();
+					}
 					tt9.onT9Glide(completedSequence);
 				}
 				return wasGliding;
@@ -124,7 +129,11 @@ final class T9GlideGesture {
 		}
 
 		append(number);
+		final boolean wasGliding = gliding;
 		gliding = sequence.length() > 1;
+		if (BuildConfig.DEBUG && gliding && !wasGliding) {
+			Toast.makeText(sourceKey.getContext(), "Glide detected: " + sequence, Toast.LENGTH_SHORT).show();
+		}
 	}
 
 
