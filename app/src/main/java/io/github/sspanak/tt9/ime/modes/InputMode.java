@@ -168,6 +168,15 @@ abstract public class InputMode {
 	public boolean containsEmojis() { return false; }
 	public boolean containsGeneratedSuggestions() { return false; }
 
+	public boolean supportsT9Glide() { return false; }
+
+	public boolean setT9GlideSuggestions(
+		@NonNull String sequence,
+		@NonNull ArrayList<String> glideSuggestions
+	) {
+		return false;
+	}
+
 	public boolean isTyping() { return !digitSequence.isEmpty(); }
 	public int getFirstKey() { return digitSequence.isEmpty() ? -1 : digitSequence.charAt(0) - '0'; }
 	public int getSequenceLength() { return digitSequence.length(); } // The number of key presses for the current word.
