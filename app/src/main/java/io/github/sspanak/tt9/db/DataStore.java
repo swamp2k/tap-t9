@@ -15,6 +15,7 @@ import java.util.function.Consumer;
 
 import io.github.sspanak.tt9.db.entities.AddWordResult;
 import io.github.sspanak.tt9.db.entities.CustomWord;
+import io.github.sspanak.tt9.db.entities.T9GlideCandidate;
 import io.github.sspanak.tt9.db.wordPairs.WordPairStore;
 import io.github.sspanak.tt9.db.words.WordStore;
 import io.github.sspanak.tt9.languages.Language;
@@ -29,6 +30,8 @@ public class DataStore {
 
 	@Nullable private static Future<?> getWordsTask;
 	@NonNull private static CancellationSignal getWordsCancellationSignal = new CancellationSignal();
+	@Nullable private static Future<?> getGlideWordsTask;
+	@NonNull private static CancellationSignal getGlideWordsCancellationSignal = new CancellationSignal();
 
 	private static WordPairStore pairs;
 	private static WordStore words;
@@ -140,6 +143,49 @@ public class DataStore {
 		}
 	}
 
+
+
+	public static void getT9GlideCandidates(
+		@NonNull Consumer<ArrayList<T9GlideCandidate>> dataHandler,
+		@NonNull Language language,
+		@NonNull ArrayList<String> sequences,
+		int maxWordsPerSequence
+	) {
+		if (getGlideWordsTask != null && !getGlideWordsTask.isDone()) {
+			getGlideWordsCancellationSignal.cancel();
+		}
+
+		getGlideWordsCancellationSignal = new CancellationSignal();
+		getGlideWordsTask = runInThread(() -> {
+			try {
+				ArrayList<T9GlideCandidate> data = words.getExactGlideCandidates(
+					getGlideWordsCancellationSignal,
+					language,
+					sequences,
+					maxWordsPerSequence
+				);
+				dataHandler.accept(data);
+			} catch (Exception e) {
+				Logger.e(LOG_TAG, "Error fetching T9 glide words: " + e.getMessage());
+			}
+		});
+
+		runInThread(DataStore::setGetGlideWordsTimeout);
+	}
+
+
+	private static void setGetGlideWordsTimeout() {
+		if (getGlideWordsTask == null) {
+			return;
+		}
+
+		try {
+			getGlideWordsTask.get(SettingsStore.SLOW_QUERY_TIMEOUT, TimeUnit.MILLISECONDS);
+		} catch (Exception e) {
+			getGlideWordsCancellationSignal.cancel();
+			Logger.e(LOG_TAG, "T9 glide word loading timed out after " + SettingsStore.SLOW_QUERY_TIMEOUT + " ms.");
+		}
+	}
 
 	public static void getCustomWords(Consumer<ArrayList<CustomWord>> dataHandler, String wordFilter, int maxWords) {
 		runInThread(() -> dataHandler.accept(words.getSimilarCustom(wordFilter, maxWords)));
