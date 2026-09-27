@@ -12,8 +12,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import io.github.sspanak.tt9.db.DataStore;
+import io.github.sspanak.tt9.db.entities.T9GlideCandidate;
 import io.github.sspanak.tt9.db.words.DictionaryLoader;
 import io.github.sspanak.tt9.hacks.InputType;
+import io.github.sspanak.tt9.ime.glide.T9GlideDecoder;
 import io.github.sspanak.tt9.ime.modes.InputModeKind;
 import io.github.sspanak.tt9.languages.LanguageCollection;
 import io.github.sspanak.tt9.preferences.settings.SettingsStore;
@@ -33,6 +35,7 @@ public class TraditionalT9 extends PremiumHandler {
 	@NonNull private final Handler heartbeatDetector = new Handler(Looper.getMainLooper());
 	private boolean isDead = false;
 	private int zombieChecks = 0;
+	private long t9GlideRequestId = 0;
 
 	// A String to be committed after successfully starting in an input field.
 	@NonNull private final StringBuffer onAfterStartText = new StringBuffer();
@@ -129,6 +132,7 @@ public class TraditionalT9 extends PremiumHandler {
 	@Override
 	protected boolean onStart(EditorInfo field, boolean restarting) {
 		Logger.setLevel(settings.getLogLevel());
+		t9GlideRequestId++;
 
 		if (SystemSettings.isTT9Selected(this)) {
 			startHeartbeatCheck();
@@ -191,6 +195,7 @@ public class TraditionalT9 extends PremiumHandler {
 
 	@Override
 	protected void onStop() {
+		t9GlideRequestId++;
 		stopVoiceInput();
 		onFinishTyping(true);
 		statusBar.setText(mInputMode);
@@ -314,6 +319,65 @@ public class TraditionalT9 extends PremiumHandler {
 	public void onTimeout(int startId) {
 		onZombie();
 		super.onTimeout(startId);
+	}
+
+
+
+	/**
+	 * Resolve a completed glide across the existing T9 number keys.
+	 *
+	 * The physical path is a compressed key sequence. We expand a bounded set of repeated-key
+	 * variants, fetch exact dictionary matches for all of them, then rank the combined candidates
+	 * before handing them to the normal suggestion/composing flow.
+	 */
+	public void onT9Glide(@NonNull String compressedSequence) {
+		if (
+			compressedSequence.length() < 2
+			|| mLanguage == null
+			|| !mInputMode.supportsT9Glide()
+			|| DictionaryLoader.autoLoad(this, settings, mLanguage)
+		) {
+			return;
+		}
+
+		final int languageId = mLanguage.getId();
+		final long requestId = ++t9GlideRequestId;
+		final var sequenceVariants = T9GlideDecoder.generateSequenceVariants(compressedSequence);
+
+		Logger.d(
+			"T9Glide",
+			"Looking up glide path " + compressedSequence + " using " + sequenceVariants.size() + " sequence variant(s)"
+		);
+
+		DataStore.getT9GlideCandidates(
+			matches -> backgroundTasks.post(() -> {
+				if (
+					requestId != t9GlideRequestId
+					|| mLanguage == null
+					|| mLanguage.getId() != languageId
+					|| !mInputMode.supportsT9Glide()
+				) {
+					return;
+				}
+
+				final var ranked = T9GlideDecoder.rank(compressedSequence, matches);
+				if (ranked.isEmpty()) {
+					Logger.d("T9Glide", "No dictionary candidates for glide path: " + compressedSequence);
+					return;
+				}
+
+				T9GlideCandidate top = ranked.get(0);
+				Logger.d(
+					"T9Glide",
+					"Resolved " + compressedSequence + " -> " + top.word + " (" + top.sequence + "), "
+						+ ranked.size() + " ranked candidate(s)"
+				);
+				showT9GlideCandidates(ranked);
+			}),
+			mLanguage,
+			sequenceVariants,
+			4
+		);
 	}
 
 
