@@ -12,8 +12,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import io.github.sspanak.tt9.db.DataStore;
+import io.github.sspanak.tt9.db.entities.T9GlideCandidate;
 import io.github.sspanak.tt9.db.words.DictionaryLoader;
 import io.github.sspanak.tt9.hacks.InputType;
+import io.github.sspanak.tt9.ime.glide.T9GlideDecoder;
 import io.github.sspanak.tt9.ime.modes.InputModeKind;
 import io.github.sspanak.tt9.languages.LanguageCollection;
 import io.github.sspanak.tt9.preferences.settings.SettingsStore;
@@ -324,15 +326,15 @@ public class TraditionalT9 extends PremiumHandler {
 	/**
 	 * Resolve a completed glide across the existing T9 number keys.
 	 *
-	 * The first MVP intentionally uses exact T9 sequences only. This keeps false positives low while
-	 * the touch path and cancellation behavior are validated on real devices. Geometry-aware ranking
-	 * and repeated-key inference can be layered on top without changing normal tap typing.
+	 * The physical path is a compressed key sequence. We expand a bounded set of repeated-key
+	 * variants, fetch exact dictionary matches for all of them, then rank the combined candidates
+	 * before handing them to the normal suggestion/composing flow.
 	 */
-	public void onT9Glide(@NonNull String sequence) {
+	public void onT9Glide(@NonNull String compressedSequence) {
 		if (
-			sequence.length() < 2
-			|| !InputModeKind.isPredictive(mInputMode)
+			compressedSequence.length() < 2
 			|| mLanguage == null
+			|| !mInputMode.supportsT9Glide()
 			|| DictionaryLoader.autoLoad(this, settings, mLanguage)
 		) {
 			return;
@@ -340,34 +342,44 @@ public class TraditionalT9 extends PremiumHandler {
 
 		final int languageId = mLanguage.getId();
 		final long requestId = ++t9GlideRequestId;
-		Logger.d("T9Glide", "Looking up exact glide sequence: " + sequence);
+		final var sequenceVariants = T9GlideDecoder.generateSequenceVariants(compressedSequence);
 
-		DataStore.getWords(
-			candidates -> backgroundTasks.post(() -> {
+		Logger.d(
+			"T9Glide",
+			"Looking up glide path " + compressedSequence + " using " + sequenceVariants.size() + " sequence variant(s)"
+		);
+
+		DataStore.getT9GlideCandidates(
+			matches -> backgroundTasks.post(() -> {
 				if (
 					requestId != t9GlideRequestId
-					|| candidates.isEmpty()
 					|| mLanguage == null
 					|| mLanguage.getId() != languageId
-					|| !InputModeKind.isPredictive(mInputMode)
+					|| !mInputMode.supportsT9Glide()
 				) {
-					Logger.d("T9Glide", "No usable candidate for sequence: " + sequence);
 					return;
 				}
 
-				final String topCandidate = candidates.get(0);
-				Logger.d("T9Glide", "Resolved " + sequence + " -> " + topCandidate + " from " + candidates.size() + " candidate(s)");
-				onText(topCandidate, false);
+				final var ranked = T9GlideDecoder.rank(compressedSequence, matches);
+				if (ranked.isEmpty()) {
+					Logger.d("T9Glide", "No dictionary candidates for glide path: " + compressedSequence);
+					return;
+				}
+
+				T9GlideCandidate top = ranked.get(0);
+				Logger.d(
+					"T9Glide",
+					"Resolved " + compressedSequence + " -> " + top.word + " (" + top.sequence + "), "
+						+ ranked.size() + " ranked candidate(s)"
+				);
+				showT9GlideCandidates(ranked);
 			}),
 			mLanguage,
-			sequence,
-			true,
-			"",
-			false,
-			0,
-			8
+			sequenceVariants,
+			4
 		);
 	}
+
 
 	@Override
 	protected boolean onNumber(int key, boolean hold, int repeat) {
