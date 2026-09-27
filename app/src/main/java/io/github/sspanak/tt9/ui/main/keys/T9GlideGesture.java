@@ -9,7 +9,6 @@ import androidx.annotation.NonNull;
 import io.github.sspanak.tt9.BuildConfig;
 import io.github.sspanak.tt9.R;
 import io.github.sspanak.tt9.ime.TraditionalT9;
-import io.github.sspanak.tt9.ime.modes.InputModeKind;
 import io.github.sspanak.tt9.util.Logger;
 
 /**
@@ -105,7 +104,7 @@ final class T9GlideGesture {
 			number >= 2 && number <= 9
 			&& !sourceKey.isFnPanelOn()
 			&& !tt9.isVoiceInputActive()
-			&& InputModeKind.isPredictive(tt9.getInputMode());
+			&& tt9.getInputMode().supportsT9Glide();
 	}
 
 
