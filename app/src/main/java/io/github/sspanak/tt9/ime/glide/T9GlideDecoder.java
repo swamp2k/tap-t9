@@ -10,6 +10,8 @@ import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 
+import io.github.sspanak.tt9.db.entities.T9GlideCandidate;
+
 /**
  * Pure-Java helpers for T9 glide decoding.
  *
