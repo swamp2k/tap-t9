@@ -14,6 +14,7 @@ import io.github.sspanak.tt9.db.entities.CustomWord;
 import io.github.sspanak.tt9.db.entities.NormalizationList;
 import io.github.sspanak.tt9.db.entities.Word;
 import io.github.sspanak.tt9.db.entities.WordList;
+import io.github.sspanak.tt9.db.entities.T9GlideCandidate;
 import io.github.sspanak.tt9.db.sqlite.DeleteOps;
 import io.github.sspanak.tt9.db.sqlite.InsertOps;
 import io.github.sspanak.tt9.db.sqlite.ReadOps;
@@ -120,6 +121,56 @@ public class WordStore extends BaseSyncStore {
 		return words;
 	}
 
+
+
+	public ArrayList<T9GlideCandidate> getExactGlideCandidates(
+		@NonNull CancellationSignal cancel,
+		Language language,
+		@NonNull ArrayList<String> sequences,
+		int maxWordsPerSequence
+	) {
+		ArrayList<T9GlideCandidate> candidates = new ArrayList<>();
+		if (!checkOrNotify() || language == null || language instanceof NullLanguage || sequences.isEmpty()) {
+			return candidates;
+		}
+
+		final int limit = Math.max(1, maxWordsPerSequence);
+
+		for (String sequence : sequences) {
+			if (cancel.isCanceled()) {
+				break;
+			}
+
+			String positions = readOps.getWordPositions(
+				sqlite.getDb(),
+				cancel,
+				language,
+				sequence,
+				0,
+				0,
+				Integer.MAX_VALUE,
+				""
+			);
+
+			WordList words = readOps.getWords(
+				sqlite.getDb(),
+				cancel,
+				language,
+				positions,
+				"",
+				false,
+				true
+			);
+
+			int count = Math.min(limit, words.size());
+			for (int i = 0; i < count; i++) {
+				Word word = words.get(i);
+				candidates.add(new T9GlideCandidate(word.word, sequence, word.frequency));
+			}
+		}
+
+		return candidates;
+	}
 
 	@NonNull public ArrayList<CustomWord> getSimilarCustom(String wordFilter, int maxWords) {
 		return checkOrNotify() ? readOps.getCustomWords(sqlite.getDb(), wordFilter, maxWords) : new ArrayList<>();

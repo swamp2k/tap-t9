@@ -12,6 +12,7 @@ import androidx.annotation.WorkerThread;
 import java.util.ArrayList;
 
 import io.github.sspanak.tt9.R;
+import io.github.sspanak.tt9.db.entities.T9GlideCandidate;
 import io.github.sspanak.tt9.db.words.DictionaryLoader;
 import io.github.sspanak.tt9.ime.helpers.SuggestionOps;
 import io.github.sspanak.tt9.ime.modes.InputModeKind;
@@ -109,6 +110,42 @@ abstract public class SuggestionHandler extends TypingHandler {
 		}
 	}
 
+
+
+	protected boolean showT9GlideCandidates(@NonNull ArrayList<T9GlideCandidate> candidates) {
+		if (candidates.isEmpty() || !mInputMode.supportsT9Glide()) {
+			return false;
+		}
+
+		suggestionOps.cancelDelayedAccept();
+
+		final T9GlideCandidate top = candidates.get(0);
+		final int firstKey = top.sequence.isEmpty() ? -1 : top.sequence.charAt(0) - '0';
+		String[] surroundingText = textField.getSurroundingStringForAutoAssistance(settings, mInputMode);
+
+		// Commit the previous composing word when a new glide begins. Treat it as a deliberate
+		// word acceptance so the existing auto-space and learning logic keeps working.
+		final String previousWord = suggestionOps.acceptIncomplete();
+		if (!previousWord.isEmpty()) {
+			mInputMode.onAcceptSuggestion(previousWord);
+			surroundingText = autoCorrectSpace(previousWord, surroundingText, true, firstKey);
+			mindReader.setContext(mInputMode, mLanguage, surroundingText, previousWord);
+		}
+
+		mInputMode.determineNextWordTextCase(surroundingText[0], firstKey);
+
+		ArrayList<String> words = new ArrayList<>(candidates.size());
+		for (T9GlideCandidate candidate : candidates) {
+			words.add(candidate.word);
+		}
+
+		if (!mInputMode.setT9GlideSuggestions(top.sequence, words)) {
+			return false;
+		}
+
+		handleSuggestions(0, null);
+		return true;
+	}
 
 	@NonNull
 	@Override

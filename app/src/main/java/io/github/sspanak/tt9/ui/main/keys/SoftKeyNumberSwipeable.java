@@ -2,6 +2,8 @@ package io.github.sspanak.tt9.ui.main.keys;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
+import android.view.View;
 
 import androidx.annotation.Nullable;
 
@@ -21,10 +23,24 @@ public class SoftKeyNumberSwipeable extends SoftKeyNumber {
 	private String lastSwipeCommand = null;
 	private final Command[] swipeCommand = { null, null };
 	private boolean swipeCommandRan = false;
+	private T9GlideGesture t9GlideGesture;
 
 	public SoftKeyNumberSwipeable(Context context) { super(context); }
 	public SoftKeyNumberSwipeable(Context context, AttributeSet attrs) { super(context, attrs); }
 	public SoftKeyNumberSwipeable(Context context, AttributeSet attrs, int defStyleAttr) { super(context, attrs, defStyleAttr); }
+
+
+	@Override
+	public boolean onTouch(View v, MotionEvent event) {
+		if (tt9 != null) {
+			t9GlideGesture = t9GlideGesture == null ? new T9GlideGesture(this) : t9GlideGesture;
+			if (t9GlideGesture.onTouch(tt9, event)) {
+				return true;
+			}
+		}
+
+		return super.onTouch(v, event);
+	}
 
 
 	@Override

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<string name="app_name" translatable="false">TT9 Glide Test</string>
+	<string name="app_name_short" translatable="false">TT9 Glide</string>
+</resources>

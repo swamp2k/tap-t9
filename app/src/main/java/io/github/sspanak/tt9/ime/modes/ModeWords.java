@@ -320,6 +320,33 @@ class ModeWords extends ModeCheonjiin {
 	}
 
 
+	@Override
+	public boolean supportsT9Glide() {
+		return true;
+	}
+
+
+	@Override
+	public boolean setT9GlideSuggestions(
+		@NonNull String sequence,
+		@NonNull ArrayList<String> glideSuggestions
+	) {
+		if (sequence.isEmpty() || glideSuggestions.isEmpty()) {
+			return false;
+		}
+
+		predictions.reset();
+		containsEmojis = false;
+		disablePredictions = false;
+		stem = "";
+		digitSequence = sequence;
+		suggestions = new ArrayList<>(glideSuggestions);
+		autoAcceptTimeout = settings.getAutoAcceptTimeoutPredictive();
+
+		return true;
+	}
+
+
 	/**
 	 * loadSuggestions
 	 * Loads the possible list of suggestions for the current digitSequence. "currentWord" is used
