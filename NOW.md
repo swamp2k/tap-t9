@@ -1,6 +1,6 @@
 # Session bookmark
 
-Doing: Repository orientation completed; publishing root instructions and this bookmark through a documentation-only PR. Awaiting user direction before implementation.
+Doing: Repository orientation completed; root instructions and this bookmark published in documentation-only PR #2 (https://github.com/swamp2k/tap-t9/pull/2), branch docs/session-bookmark-instructions. Awaiting user direction before implementation.
 
 State:
 - Reviewed master at 05b92fcacbfe79b5339a60a3d8ddb614001907e2, README.md, CONTRIBUTING.md, build configuration, core IME code, recent commits, and the only pre-existing open PR (#1).
